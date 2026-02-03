@@ -32,6 +32,8 @@ export type ErrorCode =
   | 'RLD-405' // Unstable JSX prop
   | 'RLD-406' // Unstable callback in useCallback deps (dependency chain)
   | 'RLD-407' // useSyncExternalStore unstable getSnapshot function
+  | 'RLD-408' // Unstable key prop (causes remounting every render)
+  | 'RLD-409' // Index used as key (code smell with reordering)
   | 'RLD-410' // Object spread guard risk
   | 'RLD-420' // useCallback/useMemo modifies dependency (no direct loop but review)
   | 'RLD-500' // useEffect missing dependency array

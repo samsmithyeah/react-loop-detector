@@ -425,7 +425,7 @@ export async function detectCircularDependencies(
 
   // Run intelligent hooks analysis (consolidated single analyzer)
   const hooksSpinner = createStageSpinner('Analyzing hooks & stability…', 'magenta');
-  const rawAnalysis = analyzeHooks(parsedFiles, {
+  const rawAnalysis = await analyzeHooks(parsedFiles, {
     stableHooks: config.stableHooks,
     unstableHooks: config.unstableHooks,
     stableHookPatterns: config.stableHookPatterns,

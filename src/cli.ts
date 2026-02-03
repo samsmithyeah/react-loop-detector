@@ -67,12 +67,13 @@ function printBanner(): void {
   if (!process.stdout.isTTY || chalk.level === 0) return;
 
   try {
-    const title = figlet.textSync('React Loop Detector', { font: 'Slant' });
+    const title = figlet.textSync('rld', { font: 'Slant' });
     console.log(applyGradientSafe(infoGradient, title, true));
   } catch {
-    console.log(applyGradientSafe(infoGradient, 'React Loop Detector'));
+    console.log(applyGradientSafe(infoGradient, 'rld'));
   }
 
+  console.log(chalk.white('React loop detector'));
   const rule = '─'.repeat(Math.min(process.stdout.columns ?? 60, 60));
   console.log(chalk.gray(rule));
   console.log(
