@@ -35,11 +35,7 @@ const createRule = ESLintUtils.RuleCreator(
     `https://github.com/samsmithyeah/react-loop-detector/blob/main/eslint-plugin/docs/rules/${name}.md`
 );
 
-type MessageIds =
-  | 'unstableKeyCall'
-  | 'unstableKeyObject'
-  | 'unstableKeyArray'
-  | 'indexAsKey';
+type MessageIds = 'unstableKeyCall' | 'unstableKeyObject' | 'unstableKeyArray' | 'indexAsKey';
 
 export interface Options {
   /** Whether to warn on index as key (default: true) */
@@ -131,10 +127,7 @@ export default createRule<[Options], MessageIds>({
       }
 
       // Member expression: Math.random(), Date.now()
-      if (
-        callee.type === 'MemberExpression' &&
-        callee.property.type === 'Identifier'
-      ) {
+      if (callee.type === 'MemberExpression' && callee.property.type === 'Identifier') {
         const methodName = callee.property.name;
 
         if (callee.object.type === 'Identifier') {
@@ -314,10 +307,7 @@ export default createRule<[Options], MessageIds>({
 
       // Check key attributes
       JSXAttribute(node) {
-        if (
-          node.name.type === 'JSXIdentifier' &&
-          node.name.name === 'key'
-        ) {
+        if (node.name.type === 'JSXIdentifier' && node.name.name === 'key') {
           analyzeKeyValue(node);
         }
       },
