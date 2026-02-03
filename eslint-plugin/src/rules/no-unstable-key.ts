@@ -38,7 +38,7 @@ const createRule = ESLintUtils.RuleCreator(
 type MessageIds = 'unstableKeyCall' | 'unstableKeyObject' | 'unstableKeyArray' | 'indexAsKey';
 
 export interface Options {
-  /** Whether to warn on index as key (default: true) */
+  /** Whether to warn on index as key (default: false) */
   warnOnIndex?: boolean;
 }
 
@@ -101,7 +101,7 @@ export default createRule<[Options], MessageIds>({
   },
   defaultOptions: [{ warnOnIndex: false }],
   create(context, [options]) {
-    const warnOnIndex = options.warnOnIndex !== false;
+    const warnOnIndex = options.warnOnIndex === true;
 
     // Track map callback contexts to detect index parameters
     interface MapContext {
@@ -204,21 +204,18 @@ export default createRule<[Options], MessageIds>({
       if (expression.type === 'TemplateLiteral') {
         // Check expressions within the template
         for (const expr of expression.expressions) {
-          analyzeExpression(expr, node);
+          analyzeExpression(expr);
         }
         return;
       }
 
-      analyzeExpression(expression, node);
+      analyzeExpression(expression);
     }
 
     /**
      * Analyze an expression used as key
      */
-    function analyzeExpression(
-      expression: TSESTree.Expression,
-      attributeNode: TSESTree.JSXAttribute
-    ): void {
+    function analyzeExpression(expression: TSESTree.Expression): void {
       // Object literal: key={{ id: 1 }}
       if (expression.type === 'ObjectExpression') {
         context.report({
