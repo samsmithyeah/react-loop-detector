@@ -176,6 +176,8 @@ function isStateHookCall(node: t.CallExpression): boolean {
   // Namespaced call: React.useState() or React.useReducer()
   if (
     t.isMemberExpression(callee) &&
+    t.isIdentifier(callee.object) &&
+    callee.object.name === 'React' &&
     t.isIdentifier(callee.property) &&
     STATE_HOOKS.has(callee.property.name)
   ) {
@@ -200,6 +202,8 @@ function isRefHookCall(node: t.CallExpression): boolean {
   // Namespaced call: React.useRef()
   if (
     t.isMemberExpression(callee) &&
+    t.isIdentifier(callee.object) &&
+    callee.object.name === 'React' &&
     t.isIdentifier(callee.property) &&
     callee.property.name === 'useRef'
   ) {
