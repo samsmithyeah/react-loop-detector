@@ -27,7 +27,7 @@ function createTestFile(content: string): ParsedFile {
 
 describe('Stable Reference False Positives', () => {
   describe('useCallback-wrapped functions should be stable', () => {
-    it('should NOT flag functions wrapped in useCallback as unstable', () => {
+    it('should NOT flag functions wrapped in useCallback as unstable', async () => {
       // From IllustrationSelection.tsx - loadStyles is wrapped in useCallback
       const parsed = createTestFile(`
         import React, { useCallback, useEffect, useState } from 'react';
@@ -57,7 +57,7 @@ describe('Stable Reference False Positives', () => {
         async function fetchStyles() { return []; }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const issues = results.filter(
         (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
       );
@@ -66,7 +66,7 @@ describe('Stable Reference False Positives', () => {
       expect(issues).toHaveLength(0);
     });
 
-    it('should NOT flag useMemo-wrapped values as unstable', () => {
+    it('should NOT flag useMemo-wrapped values as unstable', async () => {
       const parsed = createTestFile(`
         import React, { useMemo, useEffect, useState } from 'react';
 
@@ -85,7 +85,7 @@ describe('Stable Reference False Positives', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const issues = results.filter(
         (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
       );
@@ -94,7 +94,7 @@ describe('Stable Reference False Positives', () => {
       expect(issues).toHaveLength(0);
     });
 
-    it('should NOT flag React.useCallback-wrapped functions as unstable', () => {
+    it('should NOT flag React.useCallback-wrapped functions as unstable', async () => {
       // From IllustrationSelection.tsx - loadStyles is wrapped in React.useCallback
       const parsed = createTestFile(`
         import React, { useEffect, useState } from 'react';
@@ -124,7 +124,7 @@ describe('Stable Reference False Positives', () => {
         async function fetchStyles() { return []; }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const issues = results.filter(
         (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
       );
@@ -133,7 +133,7 @@ describe('Stable Reference False Positives', () => {
       expect(issues).toHaveLength(0);
     });
 
-    it('should NOT flag React.useMemo-wrapped values as unstable', () => {
+    it('should NOT flag React.useMemo-wrapped values as unstable', async () => {
       const parsed = createTestFile(`
         import React, { useEffect, useState } from 'react';
 
@@ -152,7 +152,7 @@ describe('Stable Reference False Positives', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const issues = results.filter(
         (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
       );
@@ -163,7 +163,7 @@ describe('Stable Reference False Positives', () => {
   });
 
   describe('Primitive values should be stable', () => {
-    it('should NOT flag string from .join() as unstable', () => {
+    it('should NOT flag string from .join() as unstable', async () => {
       // From CharacterSelection.tsx - childrenTimestampKey is a string
       const parsed = createTestFile(`
         import React, { useEffect, useState } from 'react';
@@ -203,7 +203,7 @@ describe('Stable Reference False Positives', () => {
         async function getAuthenticatedUrl(id: string) { return ''; }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const issues = results.filter(
         (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
       );
@@ -212,7 +212,7 @@ describe('Stable Reference False Positives', () => {
       expect(issues).toHaveLength(0);
     });
 
-    it('should NOT flag number from Math.round() as unstable', () => {
+    it('should NOT flag number from Math.round() as unstable', async () => {
       // From StoryViewer.tsx - textPanelMaxHeight is a number
       const parsed = createTestFile(`
         import React, { useCallback, useState } from 'react';
@@ -239,7 +239,7 @@ describe('Stable Reference False Positives', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const issues = results.filter(
         (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
       );
@@ -248,7 +248,7 @@ describe('Stable Reference False Positives', () => {
       expect(issues).toHaveLength(0);
     });
 
-    it('should NOT flag boolean expressions as unstable', () => {
+    it('should NOT flag boolean expressions as unstable', async () => {
       const parsed = createTestFile(`
         import React, { useCallback, useState } from 'react';
 
@@ -266,7 +266,7 @@ describe('Stable Reference False Positives', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const issues = results.filter(
         (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
       );
@@ -277,7 +277,7 @@ describe('Stable Reference False Positives', () => {
   });
 
   describe('Zustand getState() pattern should be stable', () => {
-    it('should NOT flag actions from useStore.getState() as unstable', () => {
+    it('should NOT flag actions from useStore.getState() as unstable', async () => {
       // From index.tsx - setStories comes from useLibraryStore.getState()
       const parsed = createTestFile(`
         import React, { useCallback, useEffect, useState } from 'react';
@@ -315,7 +315,7 @@ describe('Stable Reference False Positives', () => {
         function navigate(id: string) {}
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const issues = results.filter(
         (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
       );
@@ -324,7 +324,7 @@ describe('Stable Reference False Positives', () => {
       expect(issues).toHaveLength(0);
     });
 
-    it('should NOT flag actions from any store.getState() pattern', () => {
+    it('should NOT flag actions from any store.getState() pattern', async () => {
       const parsed = createTestFile(`
         import React, { useCallback } from 'react';
         import { useAuthStore } from './authStore';
@@ -346,7 +346,7 @@ describe('Stable Reference False Positives', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const issues = results.filter(
         (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
       );
@@ -357,7 +357,7 @@ describe('Stable Reference False Positives', () => {
   });
 
   describe('Array filter/sort without memoization', () => {
-    it('should flag as potential-issue (not infinite loop) when setState is conditional', () => {
+    it('should flag as potential-issue (not infinite loop) when setState is conditional', async () => {
       // From credits.tsx - subscriptions array is recreated each render
       // This is flagged as potential-issue (not confirmed-infinite-loop) because:
       // 1. subscriptions is recreated every render (new array from .filter().sort())
@@ -396,7 +396,7 @@ describe('Stable Reference False Positives', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
       const potentialIssues = results.filter((r) => r.type === 'potential-issue');
 
@@ -411,7 +411,7 @@ describe('Stable Reference False Positives', () => {
       expect(potentialIssues[0].category).toBe('performance');
     });
 
-    it('SHOULD flag as confirmed-infinite-loop when setState is unconditional', () => {
+    it('SHOULD flag as confirmed-infinite-loop when setState is unconditional', async () => {
       // This is a TRUE infinite loop - setState is called unconditionally
       const parsed = createTestFile(`
         import React, { useEffect, useState } from 'react';
@@ -431,7 +431,7 @@ describe('Stable Reference False Positives', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       // SHOULD be flagged as confirmed infinite loop
@@ -442,7 +442,7 @@ describe('Stable Reference False Positives', () => {
   });
 
   describe('Control tests - patterns that SHOULD be flagged', () => {
-    it('SHOULD flag unstable object literals in dependencies', () => {
+    it('SHOULD flag unstable object literals in dependencies', async () => {
       const parsed = createTestFile(`
         import React, { useEffect } from 'react';
 
@@ -457,7 +457,7 @@ describe('Stable Reference False Positives', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const issues = results.filter(
         (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
       );
@@ -466,7 +466,7 @@ describe('Stable Reference False Positives', () => {
       expect(issues.length).toBeGreaterThan(0);
     });
 
-    it('SHOULD flag unstable array literals in dependencies', () => {
+    it('SHOULD flag unstable array literals in dependencies', async () => {
       const parsed = createTestFile(`
         import React, { useEffect } from 'react';
 
@@ -481,7 +481,7 @@ describe('Stable Reference False Positives', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const issues = results.filter(
         (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
       );
@@ -490,7 +490,7 @@ describe('Stable Reference False Positives', () => {
       expect(issues.length).toBeGreaterThan(0);
     });
 
-    it('SHOULD flag inline functions in dependencies', () => {
+    it('SHOULD flag inline functions in dependencies', async () => {
       const parsed = createTestFile(`
         import React, { useEffect } from 'react';
 
@@ -506,7 +506,7 @@ describe('Stable Reference False Positives', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const issues = results.filter(
         (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
       );
@@ -520,7 +520,7 @@ describe('Stable Reference False Positives', () => {
     // These tests verify that Zustand store hooks matching the /^use\w+Store$/ pattern
     // are correctly identified as stable when using presets
 
-    it('should NOT flag useAuthStore selector as unstable', () => {
+    it('should NOT flag useAuthStore selector as unstable', async () => {
       const parsed = createTestFile(`
         import React, { useEffect, useState } from 'react';
         import { useAuthStore } from './store';
@@ -548,7 +548,7 @@ describe('Stable Reference False Positives', () => {
       `);
 
       // Pass Zustand preset config with pattern
-      const results = analyzeHooks([parsed], {
+      const results = await analyzeHooks([parsed], {
         stableHooks: ['useStore', 'useShallow'],
         stableHookPatterns: [/^use\w+Store$/],
       });
@@ -561,7 +561,7 @@ describe('Stable Reference False Positives', () => {
       expect(issues).toHaveLength(0);
     });
 
-    it('should NOT flag useLibraryStore selector as unstable', () => {
+    it('should NOT flag useLibraryStore selector as unstable', async () => {
       const parsed = createTestFile(`
         import React, { useMemo } from 'react';
         import { useLibraryStore } from './store';
@@ -580,7 +580,7 @@ describe('Stable Reference False Positives', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed], {
+      const results = await analyzeHooks([parsed], {
         stableHooks: ['useStore'],
         stableHookPatterns: [/^use\w+Store$/],
       });
@@ -593,7 +593,7 @@ describe('Stable Reference False Positives', () => {
       expect(issues).toHaveLength(0);
     });
 
-    it('should NOT flag useWizardPrefillStore selector as unstable', () => {
+    it('should NOT flag useWizardPrefillStore selector as unstable', async () => {
       const parsed = createTestFile(`
         import React, { useEffect } from 'react';
         import { useWizardPrefillStore } from './store';
@@ -613,7 +613,7 @@ describe('Stable Reference False Positives', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed], {
+      const results = await analyzeHooks([parsed], {
         stableHookPatterns: [/^use\w+Store$/],
       });
 
@@ -625,7 +625,7 @@ describe('Stable Reference False Positives', () => {
       expect(issues).toHaveLength(0);
     });
 
-    it('should respect unstableHooks configuration', () => {
+    it('should respect unstableHooks configuration', async () => {
       // Test that explicitly configured unstable hooks are flagged
       const parsed = createTestFile(`
         import React, { useEffect } from 'react';
@@ -643,7 +643,7 @@ describe('Stable Reference False Positives', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed], {
+      const results = await analyzeHooks([parsed], {
         stableHookPatterns: [/^use\w+Store$/],
         unstableHooks: ['useWindowSize'], // Explicitly marked as unstable
       });
@@ -661,7 +661,7 @@ describe('Stable Reference False Positives', () => {
   describe('expo-router hooks via preset', () => {
     // These tests verify that expo-router hooks are correctly identified as stable
 
-    it('should NOT flag useRouter as unstable', () => {
+    it('should NOT flag useRouter as unstable', async () => {
       const parsed = createTestFile(`
         import React, { useEffect } from 'react';
         import { useRouter } from 'expo-router';
@@ -680,7 +680,7 @@ describe('Stable Reference False Positives', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed], {
+      const results = await analyzeHooks([parsed], {
         stableHooks: ['useRouter', 'useNavigation', 'useLocalSearchParams'],
       });
 
@@ -692,7 +692,7 @@ describe('Stable Reference False Positives', () => {
       expect(issues).toHaveLength(0);
     });
 
-    it('should NOT flag useLocalSearchParams as unstable', () => {
+    it('should NOT flag useLocalSearchParams as unstable', async () => {
       const parsed = createTestFile(`
         import React, { useEffect, useState } from 'react';
         import { useLocalSearchParams } from 'expo-router';
@@ -713,7 +713,7 @@ describe('Stable Reference False Positives', () => {
         async function fetchStory(id: string) { return { title: 'Test' }; }
       `);
 
-      const results = analyzeHooks([parsed], {
+      const results = await analyzeHooks([parsed], {
         stableHooks: ['useLocalSearchParams', 'useGlobalSearchParams'],
       });
 
@@ -725,7 +725,7 @@ describe('Stable Reference False Positives', () => {
       expect(issues).toHaveLength(0);
     });
 
-    it('should NOT flag useSegments as unstable', () => {
+    it('should NOT flag useSegments as unstable', async () => {
       const parsed = createTestFile(`
         import React, { useEffect } from 'react';
         import { useSegments, useRouter } from 'expo-router';
@@ -746,7 +746,7 @@ describe('Stable Reference False Positives', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed], {
+      const results = await analyzeHooks([parsed], {
         stableHooks: ['useSegments', 'useRouter', 'usePathname'],
       });
 

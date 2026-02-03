@@ -168,15 +168,18 @@ export async function analyzeHooks(
   const allFiles = expandToIncludeImportedFiles(parsedFiles);
   const crossFileAnalysis = analyzeCrossFileRelations(allFiles);
 
-  for (const file of parsedFiles) {
+  for (let i = 0; i < parsedFiles.length; i++) {
+    const file = parsedFiles[i];
     try {
       const fileResults = analyzeFileIntelligently(file, crossFileAnalysis, options, allFiles);
       results.push(...fileResults);
     } catch (error) {
       console.warn(`Could not analyze hooks intelligently in ${file.file}:`, error);
     }
-    // Yield to event loop periodically to allow spinner animation
-    await yieldToEventLoop();
+    // Yield to event loop every 10 files to allow spinner animation without excessive overhead
+    if (i % 10 === 9) {
+      await yieldToEventLoop();
+    }
   }
 
   // Cleanup type checker ONLY if we created it (not if it was provided/persistent)

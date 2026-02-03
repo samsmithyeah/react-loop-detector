@@ -116,10 +116,10 @@ export function SafeImportComponent() {
   });
 
   describe('Direct Cross-File State Modifications', () => {
-    it('should detect infinite loops caused by direct cross-file state modifications', () => {
+    it('should detect infinite loops caused by direct cross-file state modifications', async () => {
       const componentFile = path.join(testDir, 'cross-file-component.tsx');
       const parsedFile = parseFile(componentFile);
-      const results = analyzeHooks([parsedFile]);
+      const results = await analyzeHooks([parsedFile]);
 
       // Should detect the direct cross-file infinite loop
       const crossFileLoops = results.filter(
@@ -139,10 +139,10 @@ export function SafeImportComponent() {
       expect(directLoop!.explanation).toContain('infinite loop');
     });
 
-    it('should detect nested cross-file state modifications', () => {
+    it('should detect nested cross-file state modifications', async () => {
       const componentFile = path.join(testDir, 'cross-file-component.tsx');
       const parsedFile = parseFile(componentFile);
-      const results = analyzeHooks([parsedFile]);
+      const results = await analyzeHooks([parsedFile]);
 
       // Should detect the nested cross-file infinite loop
       const nestedLoop = results.find(
@@ -158,10 +158,10 @@ export function SafeImportComponent() {
       expect(nestedLoop!.explanation).toContain('infinite loop');
     });
 
-    it('should provide detailed information about cross-file modifications', () => {
+    it('should provide detailed information about cross-file modifications', async () => {
       const componentFile = path.join(testDir, 'cross-file-component.tsx');
       const parsedFile = parseFile(componentFile);
-      const results = analyzeHooks([parsedFile]);
+      const results = await analyzeHooks([parsedFile]);
 
       const crossFileLoop = results.find(
         (r) => r.type === 'confirmed-infinite-loop' && r.problematicDependency === 'user'
@@ -177,10 +177,10 @@ export function SafeImportComponent() {
   });
 
   describe('Safe Cross-File Patterns', () => {
-    it('should not flag safe cross-file function calls', () => {
+    it('should not flag safe cross-file function calls', async () => {
       const safeComponentFile = path.join(testDir, 'safe-component.tsx');
       const parsedFile = parseFile(safeComponentFile);
-      const results = analyzeHooks([parsedFile]);
+      const results = await analyzeHooks([parsedFile]);
 
       // Should not detect any infinite loops in safe component
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
@@ -189,10 +189,10 @@ export function SafeImportComponent() {
       // Safe patterns are not output in CLI, so this might be empty
     });
 
-    it('should handle cross-file imports that do not modify state', () => {
+    it('should handle cross-file imports that do not modify state', async () => {
       const componentFile = path.join(testDir, 'cross-file-component.tsx');
       const parsedFile = parseFile(componentFile);
-      const results = analyzeHooks([parsedFile]);
+      const results = await analyzeHooks([parsedFile]);
 
       // The safe component in the same file should not trigger false positives
       const safeComponentIssues = results.filter(
@@ -204,7 +204,7 @@ export function SafeImportComponent() {
   });
 
   describe('Cross-File Analysis Integration', () => {
-    it('should expand file analysis to include imported utilities', () => {
+    it('should expand file analysis to include imported utilities', async () => {
       const componentFile = path.join(testDir, 'cross-file-component.tsx');
       const parsedFile = parseFile(componentFile);
 
@@ -213,17 +213,17 @@ export function SafeImportComponent() {
         analyzeHooks([parsedFile]);
       }).not.toThrow();
 
-      const results = analyzeHooks([parsedFile]);
+      const results = await analyzeHooks([parsedFile]);
 
       // Should have found cross-file modifications
       const hasIntelligentResults = results.length > 0;
       expect(hasIntelligentResults).toBe(true);
     });
 
-    it('should trace function call chains across files', () => {
+    it('should trace function call chains across files', async () => {
       const componentFile = path.join(testDir, 'cross-file-component.tsx');
       const parsedFile = parseFile(componentFile);
-      const results = analyzeHooks([parsedFile]);
+      const results = await analyzeHooks([parsedFile]);
 
       // Should detect both direct and nested modifications
       const confirmedLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
@@ -235,13 +235,13 @@ export function SafeImportComponent() {
       expect(dependencies).toContain('profile');
     });
 
-    it('should handle multiple files with cross-file dependencies', () => {
+    it('should handle multiple files with cross-file dependencies', async () => {
       const componentFile = path.join(testDir, 'cross-file-component.tsx');
       const safeComponentFile = path.join(testDir, 'safe-component.tsx');
 
       const parsedFiles = [parseFile(componentFile), parseFile(safeComponentFile)];
 
-      const results = analyzeHooks(parsedFiles);
+      const results = await analyzeHooks(parsedFiles);
 
       // Should detect issues in problematic file but not in safe file
       const componentIssues = results.filter(
@@ -257,10 +257,10 @@ export function SafeImportComponent() {
   });
 
   describe('Function Parameter Analysis', () => {
-    it('should detect state setters passed as function parameters', () => {
+    it('should detect state setters passed as function parameters', async () => {
       const componentFile = path.join(testDir, 'cross-file-component.tsx');
       const parsedFile = parseFile(componentFile);
-      const results = analyzeHooks([parsedFile]);
+      const results = await analyzeHooks([parsedFile]);
 
       const crossFileLoop = results.find(
         (r) => r.type === 'confirmed-infinite-loop' && r.problematicDependency === 'user'
@@ -273,10 +273,10 @@ export function SafeImportComponent() {
       expect(crossFileLoop!.explanation).toContain('infinite loop');
     });
 
-    it('should distinguish between different setter functions', () => {
+    it('should distinguish between different setter functions', async () => {
       const componentFile = path.join(testDir, 'cross-file-component.tsx');
       const parsedFile = parseFile(componentFile);
-      const results = analyzeHooks([parsedFile]);
+      const results = await analyzeHooks([parsedFile]);
 
       const confirmedLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
@@ -288,7 +288,7 @@ export function SafeImportComponent() {
   });
 
   describe('Error Handling and Edge Cases', () => {
-    it('should handle files with syntax errors gracefully', () => {
+    it('should handle files with syntax errors gracefully', async () => {
       const invalidFile = path.join(testDir, 'invalid-syntax.tsx');
       fs.writeFileSync(invalidFile, 'import React from "react"; const broken = [;');
 
@@ -301,7 +301,7 @@ export function SafeImportComponent() {
       fs.unlinkSync(invalidFile);
     });
 
-    it('should handle missing import files gracefully', () => {
+    it('should handle missing import files gracefully', async () => {
       const componentWithMissingImport = path.join(testDir, 'missing-import.tsx');
       const content = `import React, { useEffect, useState } from 'react';
 import { nonExistentFunction } from './non-existent-file';
@@ -324,7 +324,7 @@ export function ComponentWithMissingImport() {
         analyzeHooks([parsedFile]);
       }).not.toThrow();
 
-      const results = analyzeHooks([parsedFile]);
+      const results = await analyzeHooks([parsedFile]);
 
       // Should not crash and should return some analysis
       expect(Array.isArray(results)).toBe(true);
@@ -333,7 +333,7 @@ export function ComponentWithMissingImport() {
       fs.unlinkSync(componentWithMissingImport);
     });
 
-    it('should handle empty files gracefully', () => {
+    it('should handle empty files gracefully', async () => {
       const emptyFile = path.join(testDir, 'empty.tsx');
       fs.writeFileSync(emptyFile, '');
 
@@ -348,14 +348,14 @@ export function ComponentWithMissingImport() {
   });
 
   describe('Performance and Scalability', () => {
-    it('should handle multiple cross-file dependencies efficiently', () => {
+    it('should handle multiple cross-file dependencies efficiently', async () => {
       const componentFile = path.join(testDir, 'cross-file-component.tsx');
       const safeComponentFile = path.join(testDir, 'safe-component.tsx');
 
       const parsedFiles = [parseFile(componentFile), parseFile(safeComponentFile)];
 
       const startTime = Date.now();
-      const results = analyzeHooks(parsedFiles);
+      const results = await analyzeHooks(parsedFiles);
       const endTime = Date.now();
 
       // Should complete analysis in reasonable time (less than 5 seconds)
@@ -364,13 +364,13 @@ export function ComponentWithMissingImport() {
       expect(Array.isArray(results)).toBe(true);
     });
 
-    it('should not create infinite recursion in function call tracing', () => {
+    it('should not create infinite recursion in function call tracing', async () => {
       // This test ensures our function call tracing doesn't get stuck in loops
       const componentFile = path.join(testDir, 'cross-file-component.tsx');
       const parsedFile = parseFile(componentFile);
 
       // Should complete without hanging
-      const results = analyzeHooks([parsedFile]);
+      const results = await analyzeHooks([parsedFile]);
       expect(results).toBeDefined();
     });
   });
@@ -434,10 +434,10 @@ export function processUserProfile(profile: any, setProfile: (profile: any) => v
       }
     });
 
-    it('should detect infinite loops when functions are imported with aliases', () => {
+    it('should detect infinite loops when functions are imported with aliases', async () => {
       const componentFile = path.join(aliasTestDir, 'aliased-component.tsx');
       const parsedFile = parseFile(componentFile);
-      const results = analyzeHooks([parsedFile]);
+      const results = await analyzeHooks([parsedFile]);
 
       // Should detect the infinite loop despite the alias
       const aliasedLoops = results.filter(
@@ -456,10 +456,10 @@ export function processUserProfile(profile: any, setProfile: (profile: any) => v
       expect(userLoop!.confidence).toBe('high');
     });
 
-    it('should resolve multiple aliased imports correctly', () => {
+    it('should resolve multiple aliased imports correctly', async () => {
       const componentFile = path.join(aliasTestDir, 'aliased-component.tsx');
       const parsedFile = parseFile(componentFile);
-      const results = analyzeHooks([parsedFile]);
+      const results = await analyzeHooks([parsedFile]);
 
       const confirmedLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
@@ -469,7 +469,7 @@ export function processUserProfile(profile: any, setProfile: (profile: any) => v
       expect(dependencies).toContain('profile');
     });
 
-    it('should handle mix of aliased and non-aliased imports', () => {
+    it('should handle mix of aliased and non-aliased imports', async () => {
       const mixedComponentContent = `import React, { useEffect, useState } from 'react';
 import { updateUserData as refreshData, processUserProfile } from './alias-utils';
 
@@ -498,7 +498,7 @@ export function MixedImportComponent() {
       fs.writeFileSync(mixedFile, mixedComponentContent);
 
       const parsedFile = parseFile(mixedFile);
-      const results = analyzeHooks([parsedFile]);
+      const results = await analyzeHooks([parsedFile]);
 
       const confirmedLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 

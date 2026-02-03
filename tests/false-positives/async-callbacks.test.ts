@@ -26,7 +26,7 @@ function createTestFile(content: string): ParsedFile {
 
 describe('Async Callback False Positives', () => {
   describe('setInterval pattern', () => {
-    it('should NOT flag setCurrentTime inside setInterval as infinite loop', () => {
+    it('should NOT flag setCurrentTime inside setInterval as infinite loop', async () => {
       // This pattern was incorrectly flagged as "CONFIRMED infinite loop"
       // Timer callbacks are deferred and don't execute synchronously
       const parsed = createTestFile(`
@@ -69,7 +69,7 @@ describe('Async Callback False Positives', () => {
         export default OutgoingSignalCard;
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       // Should NOT be flagged - setCurrentTime is inside setInterval (deferred)
@@ -78,7 +78,7 @@ describe('Async Callback False Positives', () => {
   });
 
   describe('Firebase onSnapshot pattern', () => {
-    it('should NOT flag setCrewsCache inside onSnapshot as infinite loop', () => {
+    it('should NOT flag setCrewsCache inside onSnapshot as infinite loop', async () => {
       // This pattern was incorrectly flagged as "CONFIRMED infinite loop"
       // Real-time listener callbacks are deferred and event-driven
       const parsed = createTestFile(`
@@ -140,7 +140,7 @@ describe('Async Callback False Positives', () => {
         const db = {};
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       // Should NOT be flagged - setCrewsCache/setUsersCache are inside onSnapshot (deferred)
@@ -149,7 +149,7 @@ describe('Async Callback False Positives', () => {
   });
 
   describe('onSnapshot with functional updater pattern', () => {
-    it('should NOT flag setAllContacts inside onSnapshot as infinite loop', () => {
+    it('should NOT flag setAllContacts inside onSnapshot as infinite loop', async () => {
       // This pattern was incorrectly flagged as "CONFIRMED infinite loop"
       // Real-time listener callbacks with functional updaters are safe
       const parsed = createTestFile(`
@@ -207,7 +207,7 @@ describe('Async Callback False Positives', () => {
         const db = {};
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       // Should NOT be flagged - setAllContacts is inside onSnapshot with functional updater
@@ -216,7 +216,7 @@ describe('Async Callback False Positives', () => {
   });
 
   describe('Combined patterns - multiple async callbacks', () => {
-    it('should handle multiple different async callback types in same component', () => {
+    it('should handle multiple different async callback types in same component', async () => {
       const parsed = createTestFile(`
         import React, { useState, useEffect } from 'react';
 
@@ -265,7 +265,7 @@ describe('Async Callback False Positives', () => {
         const db = {};
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       // None should be flagged as infinite loops - all are deferred
@@ -274,7 +274,7 @@ describe('Async Callback False Positives', () => {
   });
 
   describe('Control tests - patterns that SHOULD be flagged', () => {
-    it('SHOULD flag direct state modification without async callback', () => {
+    it('SHOULD flag direct state modification without async callback', async () => {
       const parsed = createTestFile(`
         import React, { useState, useEffect } from 'react';
 
@@ -290,7 +290,7 @@ describe('Async Callback False Positives', () => {
         };
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       // SHOULD be flagged - direct modification in useEffect
@@ -298,7 +298,7 @@ describe('Async Callback False Positives', () => {
       expect(infiniteLoops[0].problematicDependency).toBe('count');
     });
 
-    it('SHOULD flag state modification outside of async callback even when async exists', () => {
+    it('SHOULD flag state modification outside of async callback even when async exists', async () => {
       const parsed = createTestFile(`
         import React, { useState, useEffect } from 'react';
 
@@ -322,7 +322,7 @@ describe('Async Callback False Positives', () => {
         };
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       // SHOULD flag the direct setCount call
