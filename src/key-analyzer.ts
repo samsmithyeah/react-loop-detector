@@ -346,9 +346,12 @@ function analyzeKeyExpression(
 
     // Check if this is an index parameter from a map callback (only if warnOnIndex is enabled)
     if (warnOnIndex) {
-      const currentContext = mapCallbackContexts.find(
-        (ctx) => ctx.indexParamName === varName && line >= ctx.startLine && line <= ctx.endLine
-      );
+      // Search from end to find innermost context first (for nested .map() calls)
+      const currentContext = [...mapCallbackContexts]
+        .reverse()
+        .find(
+          (ctx) => ctx.indexParamName === varName && line >= ctx.startLine && line <= ctx.endLine
+        );
 
       if (currentContext) {
         return createAnalysis({

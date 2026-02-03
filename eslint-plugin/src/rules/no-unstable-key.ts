@@ -151,15 +151,21 @@ export default createRule<[Options], MessageIds>({
     }
 
     /**
-     * Check if an identifier is a map callback index parameter
+     * Check if an identifier is a map callback index parameter.
+     * Searches from innermost to outermost context for nested .map() calls.
      */
-    function isMapIndexParam(name: string): boolean {
-      for (const ctx of mapContextStack) {
-        if (ctx.indexParam === name) {
-          return true;
-        }
-      }
-      return false;
+    function isMapIndexParam(identifierNode: TSESTree.Identifier): boolean {
+      const name = identifierNode.name;
+      // Search from end to find innermost context first (for nested .map() calls with shadowed variables)
+      const containingMapContext = [...mapContextStack]
+        .reverse()
+        .find(
+          (ctx) =>
+            ctx.indexParam === name &&
+            identifierNode.range[0] >= ctx.node.range[0] &&
+            identifierNode.range[1] <= ctx.node.range[1]
+        );
+      return !!containingMapContext;
     }
 
     /**
@@ -249,17 +255,15 @@ export default createRule<[Options], MessageIds>({
 
       // Identifier: could be index parameter
       if (expression.type === 'Identifier' && warnOnIndex) {
-        const name = expression.name;
-
         // Only flag if it's a CONFIRMED map index parameter (second param of .map callback)
         // We don't blindly flag common index names like 'i' because they could be:
         // - The element value (first param of map): items.map((i) => <Item key={i} />)
         // - A loop counter or other variable
-        if (isMapIndexParam(name)) {
+        if (isMapIndexParam(expression)) {
           context.report({
             node: expression,
             messageId: 'indexAsKey',
-            data: { name },
+            data: { name: expression.name },
           });
         }
       }
