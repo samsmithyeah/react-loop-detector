@@ -156,6 +156,64 @@ const STABLE_REACT_HOOKS = new Set([
 ]);
 
 /**
+ * State hooks that return [state, setter] tuples.
+ * These are handled specially since both the state and setter are stable.
+ */
+const STATE_HOOKS = new Set(['useState', 'useReducer']);
+
+/**
+ * Check if a call expression is a state hook (useState or useReducer).
+ * Handles both direct calls (useState) and namespaced calls (React.useState).
+ */
+function isStateHookCall(node: t.CallExpression): boolean {
+  const callee = node.callee;
+
+  // Direct call: useState() or useReducer()
+  if (t.isIdentifier(callee) && STATE_HOOKS.has(callee.name)) {
+    return true;
+  }
+
+  // Namespaced call: React.useState() or React.useReducer()
+  if (
+    t.isMemberExpression(callee) &&
+    t.isIdentifier(callee.object) &&
+    callee.object.name === 'React' &&
+    t.isIdentifier(callee.property) &&
+    STATE_HOOKS.has(callee.property.name)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Check if a call expression is useRef.
+ * Handles both direct calls (useRef) and namespaced calls (React.useRef).
+ */
+function isRefHookCall(node: t.CallExpression): boolean {
+  const callee = node.callee;
+
+  // Direct call: useRef()
+  if (t.isIdentifier(callee) && callee.name === 'useRef') {
+    return true;
+  }
+
+  // Namespaced call: React.useRef()
+  if (
+    t.isMemberExpression(callee) &&
+    t.isIdentifier(callee.object) &&
+    callee.object.name === 'React' &&
+    t.isIdentifier(callee.property) &&
+    callee.property.name === 'useRef'
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Context for type-aware stability checking
  */
 export interface StabilityCheckContext {
@@ -486,12 +544,11 @@ export function extractStateInfo(ast: t.Node): StateAndRefInfo {
       }
       // Extract useState/useReducer patterns: const [state, setState] = useState(...)
       // or const [state, dispatch] = useReducer(...)
+      // Handles both: useState() and React.useState()
       if (
         t.isArrayPattern(nodePath.node.id) &&
         t.isCallExpression(nodePath.node.init) &&
-        t.isIdentifier(nodePath.node.init.callee) &&
-        (nodePath.node.init.callee.name === 'useState' ||
-          nodePath.node.init.callee.name === 'useReducer')
+        isStateHookCall(nodePath.node.init)
       ) {
         const elements = nodePath.node.id.elements;
         if (elements.length >= 2 && t.isIdentifier(elements[0]) && t.isIdentifier(elements[1])) {
@@ -635,11 +692,8 @@ export function extractUnstableVariables(
       // Handle array destructuring: const [a, b] = ... or const [a, [b, c]] = ...
       if (t.isArrayPattern(id)) {
         // Track array destructuring from useState/useReducer - these are stable
-        if (
-          t.isCallExpression(init) &&
-          t.isIdentifier(init.callee) &&
-          (init.callee.name === 'useState' || init.callee.name === 'useReducer')
-        ) {
+        // Handles both: useState() and React.useState()
+        if (t.isCallExpression(init) && isStateHookCall(init)) {
           // Use recursive extraction to handle all identifiers
           for (const name of extractIdentifiersFromPattern(id)) {
             stateVars.add(name);
@@ -770,21 +824,15 @@ export function extractUnstableVariables(
       const varName = id.name;
 
       // Check if this is a useState/useReducer call - track state variables
-      if (
-        t.isCallExpression(init) &&
-        t.isIdentifier(init.callee) &&
-        (init.callee.name === 'useState' || init.callee.name === 'useReducer')
-      ) {
+      // Handles both: useState() and React.useState()
+      if (t.isCallExpression(init) && isStateHookCall(init)) {
         stateVars.add(varName);
         return;
       }
 
       // Check if this is a useRef call - refs are stable
-      if (
-        t.isCallExpression(init) &&
-        t.isIdentifier(init.callee) &&
-        init.callee.name === 'useRef'
-      ) {
+      // Handles both: useRef() and React.useRef()
+      if (t.isCallExpression(init) && isRefHookCall(init)) {
         refVars.add(varName);
         return;
       }

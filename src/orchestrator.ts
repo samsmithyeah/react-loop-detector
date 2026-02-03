@@ -39,6 +39,7 @@ import { findHookNodes, analyzeHookNode } from './hook-analyzer';
 import { checkUnstableReferences } from './unstable-refs-detector';
 import { analyzeJsxProps } from './jsx-prop-analyzer';
 import { detectUnstableSyncExternalStore } from './sync-external-store-detector';
+import { analyzeKeyProps } from './key-analyzer';
 import { setCurrentOptions, shouldLogToConsole } from './utils';
 
 // Re-export types for backward compatibility
@@ -89,14 +90,17 @@ export function isConfiguredDeferredFunction(functionName: string): boolean {
   return _isConfiguredDeferredFunction(functionName, currentOptions);
 }
 
+/** Yield to event loop to allow spinner animation */
+const yieldToEventLoop = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+
 /**
  * Main entry point for intelligent hooks analysis.
  * Analyzes parsed React files for potential infinite loop patterns.
  */
-export function analyzeHooks(
+export async function analyzeHooks(
   parsedFiles: ParsedFile[],
   options: AnalyzerOptions = {}
-): HookAnalysis[] {
+): Promise<HookAnalysis[]> {
   const results: HookAnalysis[] = [];
 
   // Store options for helper functions
@@ -161,19 +165,20 @@ export function analyzeHooks(
   }
 
   // First, build cross-file analysis including imported utilities
-  // Only show progress if not in test mode and not generating JSON output
-  if (shouldLogToConsole()) {
-    console.log('Building cross-file function call graph...');
-  }
   const allFiles = expandToIncludeImportedFiles(parsedFiles);
   const crossFileAnalysis = analyzeCrossFileRelations(allFiles);
 
-  for (const file of parsedFiles) {
+  for (let i = 0; i < parsedFiles.length; i++) {
+    const file = parsedFiles[i];
     try {
       const fileResults = analyzeFileIntelligently(file, crossFileAnalysis, options, allFiles);
       results.push(...fileResults);
     } catch (error) {
       console.warn(`Could not analyze hooks intelligently in ${file.file}:`, error);
+    }
+    // Yield to event loop every 10 files to allow spinner animation without excessive overhead
+    if (i % 10 === 9) {
+      await yieldToEventLoop();
     }
   }
 
@@ -259,6 +264,10 @@ function analyzeFileIntelligently(
     );
     results.push(...syncExternalStoreIssues);
 
+    // Check for unstable key props in JSX elements
+    const keyPropIssues = analyzeKeyProps(ast, unstableVars, file.file, file.content);
+    results.push(...keyPropIssues);
+
     // Build map of local functions to the setters they call (for indirect modification detection)
     const localFunctionSetters = buildLocalFunctionSetterMap(ast, stateInfo);
 
@@ -319,6 +328,12 @@ function expandToIncludeImportedFiles(parsedFiles: ParsedFile[]): ParsedFile[] {
       const resolvedPath = pathResolver?.resolve(fileToProcess.file, importInfo.source);
 
       if (resolvedPath && !allFilesMap.has(resolvedPath)) {
+        // Skip non-JS/TS files (CSS, JSON, images, etc.)
+        const ext = path.extname(resolvedPath).toLowerCase();
+        if (!['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs'].includes(ext)) {
+          continue;
+        }
+
         try {
           const newParsedFile = parseFile(resolvedPath);
           allFilesMap.set(resolvedPath, newParsedFile);

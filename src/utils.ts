@@ -130,6 +130,8 @@ function getDescriptionForErrorCode(errorCode: string, hookType: string): string
     'RLD-405': 'Unstable prop to memoized component',
     'RLD-406': 'Unstable callback in useCallback deps',
     'RLD-407': 'Unstable getSnapshot in useSyncExternalStore',
+    'RLD-408': 'Unstable key prop causes remounting',
+    'RLD-409': 'Index used as key',
     'RLD-410': 'Object spread guard may not prevent loop',
     'RLD-420': 'Memoized hook modifies its dependency',
     'RLD-500': 'Missing dependency array',

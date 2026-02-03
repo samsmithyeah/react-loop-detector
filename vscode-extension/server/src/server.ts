@@ -492,7 +492,7 @@ async function runSingleFileAnalysis(uri: string, content: string): Promise<void
 
     // Run single-file analysis (no cross-file detection)
     // Pass the persistent TypeChecker/Pool if strict mode is enabled
-    const analysis = analyzeHooks([parsed], {
+    const analysis = await analyzeHooks([parsed], {
       stableHooks: rldConfig?.stableHooks,
       unstableHooks: rldConfig?.unstableHooks,
       customFunctions: rldConfig?.customFunctions,

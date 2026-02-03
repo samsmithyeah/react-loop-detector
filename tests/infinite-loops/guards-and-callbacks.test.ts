@@ -25,7 +25,7 @@ function createTestFile(content: string): ParsedFile {
 
 describe('Guards and Callbacks: Implemented Fixes', () => {
   describe('1. AST Re-parsing Performance Fix', () => {
-    it('should include AST in ParsedFile', () => {
+    it('should include AST in ParsedFile', async () => {
       const parsed = createTestFile(`
         import React, { useState } from 'react';
         export function Component() {
@@ -42,7 +42,7 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
   });
 
   describe('2. Event Listener False Positive Fix', () => {
-    it('should NOT flag addEventListener pattern as infinite loop', () => {
+    it('should NOT flag addEventListener pattern as infinite loop', async () => {
       const parsed = createTestFile(`
         import React, { useState, useEffect, useCallback } from 'react';
 
@@ -62,13 +62,13 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       expect(infiniteLoops).toHaveLength(0);
     });
 
-    it('should NOT flag setTimeout pattern as infinite loop', () => {
+    it('should NOT flag setTimeout pattern as infinite loop', async () => {
       const parsed = createTestFile(`
         import React, { useState, useEffect, useCallback } from 'react';
 
@@ -88,13 +88,13 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       expect(infiniteLoops).toHaveLength(0);
     });
 
-    it('SHOULD flag direct invocation as infinite loop', () => {
+    it('SHOULD flag direct invocation as infinite loop', async () => {
       const parsed = createTestFile(`
         import React, { useState, useEffect } from 'react';
 
@@ -109,7 +109,7 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       expect(infiniteLoops.length).toBeGreaterThan(0);
@@ -117,7 +117,7 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
   });
 
   describe('3. Context and Custom Hooks Detection', () => {
-    it('should detect state from useContext with destructured setter', () => {
+    it('should detect state from useContext with destructured setter', async () => {
       // Tests the pattern: const { data, setData } = useContext(...)
       // The analyzer uses heuristics: if 'setData' starts with 'set' + uppercase,
       // and 'data' is also destructured, it pairs them as state/setter
@@ -136,7 +136,7 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const issues = results.filter(
         (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
       );
@@ -146,7 +146,7 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
       expect(issues.some((i) => i.problematicDependency === 'data')).toBe(true);
     });
 
-    it('should detect state from custom hooks with array destructuring', () => {
+    it('should detect state from custom hooks with array destructuring', async () => {
       // Tests the pattern: const [value, setValue] = useCustomHook(...)
       // The analyzer detects this because:
       // 1. It's array destructuring from a call starting with 'use'
@@ -166,7 +166,7 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const issues = results.filter(
         (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
       );
@@ -175,7 +175,7 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
       expect(issues.some((i) => i.problematicDependency === 'value')).toBe(true);
     });
 
-    it('should NOT flag custom hooks (treated as stable by default)', () => {
+    it('should NOT flag custom hooks (treated as stable by default)', async () => {
       // Custom hooks are treated as stable by default because they typically
       // return stable values from state management libraries (Zustand, Redux, etc.)
       // or from React's own hooks. Flagging them creates too many false positives.
@@ -194,7 +194,7 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       // Custom hooks are treated as stable to avoid false positives
@@ -204,7 +204,7 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
   });
 
   describe('4. Ignore Comments Support', () => {
-    it('should ignore hooks with rld-ignore comment on same line', () => {
+    it('should ignore hooks with rld-ignore comment on same line', async () => {
       const parsed = createTestFile(`
         import React, { useState, useEffect } from 'react';
 
@@ -219,13 +219,13 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       expect(infiniteLoops).toHaveLength(0);
     });
 
-    it('should ignore hooks with rld-ignore-next-line comment', () => {
+    it('should ignore hooks with rld-ignore-next-line comment', async () => {
       const parsed = createTestFile(`
         import React, { useState, useEffect } from 'react';
 
@@ -241,7 +241,7 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       expect(infiniteLoops).toHaveLength(0);
@@ -249,7 +249,7 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
   });
 
   describe('5. Toggle Guard Detection', () => {
-    it('should recognize safe toggle guard pattern in useEffect', () => {
+    it('should recognize safe toggle guard pattern in useEffect', async () => {
       const parsed = createTestFile(`
         import React, { useState, useEffect } from 'react';
 
@@ -266,13 +266,13 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       expect(infiniteLoops).toHaveLength(0);
     });
 
-    it('should recognize equality guard pattern in useEffect (not useCallback)', () => {
+    it('should recognize equality guard pattern in useEffect (not useCallback)', async () => {
       // IMPORTANT: This test uses useEffect to properly test guard detection.
       // useCallback can't cause infinite loops, so testing guards with it is meaningless.
       const parsed = createTestFile(`
@@ -291,14 +291,14 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       // Should NOT be flagged as infinite loop due to equality guard
       expect(infiniteLoops).toHaveLength(0);
     });
 
-    it('should flag unguarded state modification in useEffect', () => {
+    it('should flag unguarded state modification in useEffect', async () => {
       // Control test: without a guard, this SHOULD be flagged
       const parsed = createTestFile(`
         import React, { useState, useEffect } from 'react';
@@ -315,7 +315,7 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       expect(infiniteLoops.length).toBeGreaterThan(0);
@@ -323,7 +323,7 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
   });
 
   describe('6. useCallback/useMemo Cannot Cause Direct Loops', () => {
-    it('should NOT flag useCallback as confirmed infinite loop', () => {
+    it('should NOT flag useCallback as confirmed infinite loop', async () => {
       const parsed = createTestFile(`
         import React, { useState, useCallback } from 'react';
 
@@ -338,14 +338,14 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       // useCallback cannot cause infinite loops by itself
       expect(infiniteLoops).toHaveLength(0);
     });
 
-    it('should NOT flag useCallback with functional updater at all', () => {
+    it('should NOT flag useCallback with functional updater at all', async () => {
       // This pattern is completely safe:
       // 1. useCallback doesn't auto-execute
       // 2. Functional updater doesn't read the dependency directly
@@ -367,7 +367,7 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
 
       // Should not flag anything - functional updater in useCallback is completely safe
       const issues = results.filter(
@@ -380,7 +380,7 @@ describe('Guards and Callbacks: Implemented Fixes', () => {
 
 describe('Guards and Callbacks: Pending Improvements', () => {
   describe('Path Alias Resolution (tsconfig)', () => {
-    it('should have path resolver available', () => {
+    it('should have path resolver available', async () => {
       // Test that the path resolver module exists and exports the expected functions
       const pathResolver = require('../../src/path-resolver');
       expect(pathResolver.createPathResolver).toBeDefined();
@@ -389,7 +389,7 @@ describe('Guards and Callbacks: Pending Improvements', () => {
       expect(typeof pathResolver.createPathResolver).toBe('function');
     });
 
-    it('should resolve relative imports correctly', () => {
+    it('should resolve relative imports correctly', async () => {
       const pathResolver = require('../../src/path-resolver');
       const path = require('path');
 
@@ -409,7 +409,7 @@ describe('Guards and Callbacks: Pending Improvements', () => {
   });
 
   describe('Object Reference Guard Detection', () => {
-    it('should detect potential issues with object reference guards', () => {
+    it('should detect potential issues with object reference guards', async () => {
       const parsed = createTestFile(`
         import React, { useState, useEffect } from 'react';
 
@@ -427,7 +427,7 @@ describe('Guards and Callbacks: Pending Improvements', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       // Should warn about object reference issue
       const issues = results.filter(
         (r) => r.type === 'potential-issue' || r.type === 'confirmed-infinite-loop'
@@ -442,7 +442,7 @@ describe('Guards and Callbacks: Pending Improvements', () => {
       expect(hasObjectSpreadWarning).toBe(true);
     });
 
-    it('should NOT flag simple equality guards without object spread', () => {
+    it('should NOT flag simple equality guards without object spread', async () => {
       const parsed = createTestFile(`
         import React, { useState, useEffect } from 'react';
 
@@ -460,7 +460,7 @@ describe('Guards and Callbacks: Pending Improvements', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const confirmedLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       // Should NOT be flagged as infinite loop due to equality guard
@@ -469,7 +469,7 @@ describe('Guards and Callbacks: Pending Improvements', () => {
   });
 
   describe('7. Async Callback Detection (setInterval, onSnapshot, etc.)', () => {
-    it('should NOT flag setInterval callbacks as infinite loops', () => {
+    it('should NOT flag setInterval callbacks as infinite loops', async () => {
       const parsed = createTestFile(`
         import React, { useState, useEffect } from 'react';
 
@@ -487,13 +487,13 @@ describe('Guards and Callbacks: Pending Improvements', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       expect(infiniteLoops).toHaveLength(0);
     });
 
-    it('should NOT flag onSnapshot callbacks as infinite loops', () => {
+    it('should NOT flag onSnapshot callbacks as infinite loops', async () => {
       const parsed = createTestFile(`
         import React, { useState, useEffect } from 'react';
         import { onSnapshot, collection, db } from 'firebase/firestore';
@@ -518,13 +518,13 @@ describe('Guards and Callbacks: Pending Improvements', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       expect(infiniteLoops).toHaveLength(0);
     });
 
-    it('should NOT flag setTimeout callbacks as infinite loops', () => {
+    it('should NOT flag setTimeout callbacks as infinite loops', async () => {
       const parsed = createTestFile(`
         import React, { useState, useEffect } from 'react';
 
@@ -543,13 +543,13 @@ describe('Guards and Callbacks: Pending Improvements', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       expect(infiniteLoops).toHaveLength(0);
     });
 
-    it('should NOT flag Promise.then callbacks as infinite loops', () => {
+    it('should NOT flag Promise.then callbacks as infinite loops', async () => {
       const parsed = createTestFile(`
         import React, { useState, useEffect } from 'react';
 
@@ -568,13 +568,13 @@ describe('Guards and Callbacks: Pending Improvements', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       expect(infiniteLoops).toHaveLength(0);
     });
 
-    it('should NOT flag addEventListener with inline callback as infinite loops', () => {
+    it('should NOT flag addEventListener with inline callback as infinite loops', async () => {
       // Note: addEventListener with an inline callback is detected as async/deferred
       // because addEventListener is in our asyncCallbackFunctions list
       const parsed = createTestFile(`
@@ -593,13 +593,13 @@ describe('Guards and Callbacks: Pending Improvements', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       expect(infiniteLoops).toHaveLength(0);
     });
 
-    it('should NOT flag addEventListener with named callback variable as infinite loops', () => {
+    it('should NOT flag addEventListener with named callback variable as infinite loops', async () => {
       // When a named function is defined and passed to addEventListener,
       // it's tracked as a function reference, not directly invoked
       const parsed = createTestFile(`
@@ -622,14 +622,14 @@ describe('Guards and Callbacks: Pending Improvements', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       // handleScroll is passed as reference (not invoked), so no infinite loop
       expect(infiniteLoops).toHaveLength(0);
     });
 
-    it('SHOULD still flag direct state modifications as infinite loops', () => {
+    it('SHOULD still flag direct state modifications as infinite loops', async () => {
       // Control test: direct modifications (not in async callbacks) should still be flagged
       const parsed = createTestFile(`
         import React, { useState, useEffect } from 'react';
@@ -646,13 +646,13 @@ describe('Guards and Callbacks: Pending Improvements', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       expect(infiniteLoops.length).toBeGreaterThan(0);
     });
 
-    it('should NOT flag subscribe pattern callbacks as infinite loops', () => {
+    it('should NOT flag subscribe pattern callbacks as infinite loops', async () => {
       const parsed = createTestFile(`
         import React, { useState, useEffect } from 'react';
 
@@ -670,7 +670,7 @@ describe('Guards and Callbacks: Pending Improvements', () => {
         }
       `);
 
-      const results = analyzeHooks([parsed]);
+      const results = await analyzeHooks([parsed]);
       const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
 
       expect(infiniteLoops).toHaveLength(0);
@@ -678,12 +678,12 @@ describe('Guards and Callbacks: Pending Improvements', () => {
   });
 
   describe.skip('Index Resolution in Module Graph', () => {
-    it('should correctly resolve directory index imports', () => {
+    it('should correctly resolve directory index imports', async () => {
       // Test importing from directory with index.ts
       // Currently may fail with certain path patterns
     });
 
-    it('should respect package.json main/exports field', () => {
+    it('should respect package.json main/exports field', async () => {
       // Node module resolution is complex
       // Currently only checks index.ts
     });

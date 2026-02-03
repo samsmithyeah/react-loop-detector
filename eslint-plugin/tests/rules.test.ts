@@ -7,6 +7,7 @@ import noUnstableVariableDeps from '../src/rules/no-unstable-variable-deps';
 import noMissingDepsArray from '../src/rules/no-missing-deps-array';
 import noUnstableContextValue from '../src/rules/no-unstable-context-value';
 import noUnstableJsxProps from '../src/rules/no-unstable-jsx-props';
+import noUnstableKey from '../src/rules/no-unstable-key';
 
 // Configure rule tester with parser for TypeScript/JSX
 const ruleTester = new RuleTester({
@@ -825,6 +826,180 @@ describe('rld-ignore comments - no-unstable-jsx-props', () => {
         function Parent() {
           const config = { page: 1 };
           return <Child config={config /* rld-ignore */} />;
+        }
+      `,
+    ],
+    invalid: [],
+  });
+});
+
+// ============================================================================
+// no-unstable-key tests
+// ============================================================================
+
+describe('no-unstable-key', () => {
+  ruleTester.run('no-unstable-key', noUnstableKey, {
+    valid: [
+      // Property access - safe
+      `
+        function List({ items }) {
+          return items.map(item => <Item key={item.id} />);
+        }
+      `,
+      // String literal - safe
+      `
+        function Component() {
+          return <Item key="static" />;
+        }
+      `,
+      // Numeric literal - safe
+      `
+        function Component() {
+          return <Item key={123} />;
+        }
+      `,
+      // Template literal with stable value - safe
+      `
+        function List({ items }) {
+          return items.map(item => <Item key={\`item-\${item.id}\`} />);
+        }
+      `,
+      // String concatenation with stable value - safe
+      `
+        function List({ items }) {
+          return items.map(item => <Item key={"item-" + item.id} />);
+        }
+      `,
+      // Index as key with warnOnIndex: false
+      {
+        code: `
+          function List({ items }) {
+            return items.map((item, index) => <Item key={index} />);
+          }
+        `,
+        options: [{ warnOnIndex: false }],
+      },
+    ],
+    invalid: [
+      // Math.random()
+      {
+        code: `
+          function List({ items }) {
+            return items.map(item => <Item key={Math.random()} />);
+          }
+        `,
+        errors: [{ messageId: 'unstableKeyCall' }],
+      },
+      // Date.now()
+      {
+        code: `
+          function List({ items }) {
+            return items.map(item => <Item key={Date.now()} />);
+          }
+        `,
+        errors: [{ messageId: 'unstableKeyCall' }],
+      },
+      // crypto.randomUUID()
+      {
+        code: `
+          function List({ items }) {
+            return items.map(item => <Item key={crypto.randomUUID()} />);
+          }
+        `,
+        errors: [{ messageId: 'unstableKeyCall' }],
+      },
+      // uuid() function call
+      {
+        code: `
+          function List({ items }) {
+            return items.map(item => <Item key={uuid()} />);
+          }
+        `,
+        errors: [{ messageId: 'unstableKeyCall' }],
+      },
+      // nanoid() function call
+      {
+        code: `
+          function List({ items }) {
+            return items.map(item => <Item key={nanoid()} />);
+          }
+        `,
+        errors: [{ messageId: 'unstableKeyCall' }],
+      },
+      // Binary expression with random call: key={'item-' + Math.random()}
+      {
+        code: `
+          function List({ items }) {
+            return items.map(item => <Item key={'item-' + Math.random()} />);
+          }
+        `,
+        errors: [{ messageId: 'unstableKeyCall' }],
+      },
+      // Inline object literal
+      {
+        code: `
+          function List({ items }) {
+            return items.map(item => <Item key={{ id: item.id }} />);
+          }
+        `,
+        errors: [{ messageId: 'unstableKeyObject' }],
+      },
+      // Inline array literal
+      {
+        code: `
+          function List({ items }) {
+            return items.map(item => <Item key={[item.id]} />);
+          }
+        `,
+        errors: [{ messageId: 'unstableKeyArray' }],
+      },
+      // Index as key (detected via map callback) - requires warnOnIndex: true
+      {
+        code: `
+          function List({ items }) {
+            return items.map((item, index) => <Item key={index} />);
+          }
+        `,
+        options: [{ warnOnIndex: true }],
+        errors: [{ messageId: 'indexAsKey' }],
+      },
+      // Index as key with different name - requires warnOnIndex: true
+      {
+        code: `
+          function List({ items }) {
+            return items.map((item, idx) => <Item key={idx} />);
+          }
+        `,
+        options: [{ warnOnIndex: true }],
+        errors: [{ messageId: 'indexAsKey' }],
+      },
+      // Index as key with common "i" name - requires warnOnIndex: true
+      {
+        code: `
+          function List({ items }) {
+            return items.map((item, i) => <Item key={i} />);
+          }
+        `,
+        options: [{ warnOnIndex: true }],
+        errors: [{ messageId: 'indexAsKey' }],
+      },
+    ],
+  });
+});
+
+describe('rld-ignore comments - no-unstable-key', () => {
+  ruleTester.run('no-unstable-key', noUnstableKey, {
+    valid: [
+      // rld-ignore on Math.random() key
+      `
+        function List({ items }) {
+          return items.map(item => <Item key={Math.random() /* rld-ignore */} />);
+        }
+      `,
+      // rld-ignore on index key
+      `
+        function List({ items }) {
+          return items.map((item, index) => <Item key={index /* rld-ignore */} />);
         }
       `,
     ],
