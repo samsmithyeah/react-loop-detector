@@ -240,6 +240,14 @@ export default createRule<[Options], MessageIds>({
         return;
       }
 
+      // Binary expression: key={'foo' + Math.random()}
+      if (expression.type === 'BinaryExpression') {
+        // Left side of BinaryExpression is always Expression (not PrivateIdentifier)
+        analyzeExpression(expression.left as TSESTree.Expression);
+        analyzeExpression(expression.right);
+        return;
+      }
+
       // Call expression: key={Math.random()}
       if (expression.type === 'CallExpression') {
         const { isRandom, callDescription } = isRandomGeneratingCall(expression);

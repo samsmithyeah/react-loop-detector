@@ -926,6 +926,15 @@ describe('no-unstable-key', () => {
         `,
         errors: [{ messageId: 'unstableKeyCall' }],
       },
+      // Binary expression with random call: key={'item-' + Math.random()}
+      {
+        code: `
+          function List({ items }) {
+            return items.map(item => <Item key={'item-' + Math.random()} />);
+          }
+        `,
+        errors: [{ messageId: 'unstableKeyCall' }],
+      },
       // Inline object literal
       {
         code: `
