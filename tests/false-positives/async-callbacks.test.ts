@@ -273,6 +273,136 @@ describe('Async Callback False Positives', () => {
     });
   });
 
+  describe('addEventListener with named function handler', () => {
+    it('should NOT flag setState inside a named function passed to addEventListener (LOOP-6)', async () => {
+      // This is the exact pattern from story-prompt-optimizer/app/experiments/[id]/page.tsx:304
+      // A named function is defined, then passed by reference to addEventListener.
+      // The setState inside it is deferred (only fires on user click), not synchronous.
+      const parsed = createTestFile(`
+        import React, { useState, useEffect, useRef } from 'react';
+
+        export default function ExperimentPage() {
+          const [showExportMenu, setShowExportMenu] = useState(false);
+          const exportMenuRef = useRef<HTMLDivElement>(null);
+
+          useEffect(() => {
+            const handleClickOutside = (event: MouseEvent) => {
+              if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+                setShowExportMenu(false);
+              }
+            };
+
+            if (showExportMenu) {
+              document.addEventListener("mousedown", handleClickOutside);
+            }
+
+            return () => {
+              document.removeEventListener("mousedown", handleClickOutside);
+            };
+          }, [showExportMenu]);
+
+          return <div ref={exportMenuRef}>{showExportMenu ? 'open' : 'closed'}</div>;
+        }
+      `);
+
+      const results = await analyzeHooks([parsed]);
+      const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
+
+      // Should NOT be flagged — setShowExportMenu is inside a named handler
+      // passed to addEventListener, so it only fires on user interaction
+      expect(infiniteLoops).toHaveLength(0);
+    });
+
+    it('should NOT flag setState inside a function declaration passed to addEventListener', async () => {
+      const parsed = createTestFile(`
+        import React, { useState, useEffect } from 'react';
+
+        export function ScrollTracker() {
+          const [scrollY, setScrollY] = useState(0);
+
+          useEffect(() => {
+            function handleScroll() {
+              setScrollY(window.scrollY);
+            }
+
+            window.addEventListener('scroll', handleScroll);
+            return () => window.removeEventListener('scroll', handleScroll);
+          }, [scrollY]);
+
+          return <div>{scrollY}</div>;
+        }
+      `);
+
+      const results = await analyzeHooks([parsed]);
+      const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
+
+      expect(infiniteLoops).toHaveLength(0);
+    });
+
+    it('should NOT flag setState inside a named handler with conditional addEventListener', async () => {
+      // Pattern: addEventListener is inside an if block, handler defined outside it
+      const parsed = createTestFile(`
+        import React, { useState, useEffect } from 'react';
+
+        export function KeyboardListener() {
+          const [lastKey, setLastKey] = useState('');
+
+          useEffect(() => {
+            const onKeyDown = (e: KeyboardEvent) => {
+              setLastKey(e.key);
+            };
+
+            if (lastKey !== 'Escape') {
+              document.addEventListener('keydown', onKeyDown);
+            }
+
+            return () => {
+              document.removeEventListener('keydown', onKeyDown);
+            };
+          }, [lastKey]);
+
+          return <div>{lastKey}</div>;
+        }
+      `);
+
+      const results = await analyzeHooks([parsed]);
+      const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
+
+      expect(infiniteLoops).toHaveLength(0);
+    });
+
+    it('SHOULD flag direct setState outside the named handler in same effect', async () => {
+      // The handler itself is safe, but a direct setState call in the effect body is not
+      const parsed = createTestFile(`
+        import React, { useState, useEffect } from 'react';
+
+        export function BrokenComponent() {
+          const [count, setCount] = useState(0);
+
+          useEffect(() => {
+            const handler = () => {
+              console.log('clicked');
+            };
+            document.addEventListener('click', handler);
+
+            // This direct call is NOT inside the handler — it's synchronous
+            setCount(count + 1);
+
+            return () => document.removeEventListener('click', handler);
+          }, [count]);
+
+          return <div>{count}</div>;
+        }
+      `);
+
+      const results = await analyzeHooks([parsed]);
+      const infiniteLoops = results.filter((r) => r.type === 'confirmed-infinite-loop');
+
+      expect(infiniteLoops.length).toBeGreaterThan(0);
+      expect(infiniteLoops[0].problematicDependency).toBe('count');
+    });
+  });
+
   describe('Control tests - patterns that SHOULD be flagged', () => {
     it('SHOULD flag direct state modification without async callback', async () => {
       const parsed = createTestFile(`
