@@ -21,6 +21,7 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: "--model claude-opus-4-6 --allowedTools Edit,Write,Read,Bash,Glob,Grep,WebFetch"
           prompt: |
             You have been assigned the following Jira issue to work on.
 
@@ -36,7 +37,7 @@ jobs:
             2. Explore the repository to understand the codebase structure and conventions
             3. Implement the changes needed to resolve the issue
             4. Write or update tests to cover your changes. Follow the existing test patterns in the repo.
-            5. Run `npm ci && npm test` to verify nothing is broken
+            5. Run `npm run check:all && npm test` to verify nothing is broken
             6. Also run tests in the eslint-plugin and vscode-extension subdirectories
             7. Create a PR with the title: "${{ github.event.client_payload.issue_key }}: ${{ github.event.client_payload.summary }}"
             8. In the PR description, reference the Jira issue key and explain what was changed and why
