@@ -280,6 +280,25 @@ describe('no-unstable-variable-deps', () => {
           }, [config]);
         }
       `,
+      // searchParams.get() returns string|null (primitive) - should not be flagged
+      `
+        function Component({ searchParams }) {
+          const oobCode = searchParams.get('oobCode');
+          useEffect(() => {
+            if (!oobCode) return;
+            console.log(oobCode);
+          }, [oobCode]);
+        }
+      `,
+      // searchParams.has() returns boolean (primitive) - should not be flagged
+      `
+        function Component({ searchParams }) {
+          const hasCode = searchParams.has('oobCode');
+          useEffect(() => {
+            console.log(hasCode);
+          }, [hasCode]);
+        }
+      `,
       // useImperativeHandle with memoized value in deps (3rd arg)
       `
         function Component(props, ref) {

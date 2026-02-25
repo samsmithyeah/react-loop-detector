@@ -79,6 +79,11 @@ const PRIMITIVE_RETURNING_METHODS = new Set([
   'endsWith',
   'every',
   'some',
+  // Collection/Web API methods that return primitives
+  // e.g., URLSearchParams.get() returns string|null, Headers.get() returns string|null
+  'get',
+  // e.g., URLSearchParams.has(), Map.has(), Set.has() return boolean
+  'has',
 ]);
 
 /**
