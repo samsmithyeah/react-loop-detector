@@ -299,6 +299,15 @@ describe('no-unstable-variable-deps', () => {
           }, [hasCode]);
         }
       `,
+      // Map.get() with dynamic key returns stored reference - should not be flagged
+      `
+        function Component({ configMap, activeKey }) {
+          const config = configMap.get(activeKey);
+          useEffect(() => {
+            console.log(config);
+          }, [config]);
+        }
+      `,
       // useImperativeHandle with memoized value in deps (3rd arg)
       `
         function Component(props, ref) {
@@ -406,6 +415,18 @@ describe('no-unstable-variable-deps', () => {
           }
         `,
         errors: [{ messageId: 'unstableObjectVariable' }],
+      },
+      // Multi-arg .get() is not a key-value lookup — should be flagged
+      {
+        code: `
+          function Component({ apiClient }) {
+            const response = apiClient.get('/users', { params: { page: 1 } });
+            useEffect(() => {
+              console.log(response);
+            }, [response]);
+          }
+        `,
+        errors: [{ messageId: 'unstableFunctionCallVariable' }],
       },
     ],
   });

@@ -79,10 +79,8 @@ const PRIMITIVE_RETURNING_METHODS = new Set([
   'endsWith',
   'every',
   'some',
-  // Collection/Web API methods that return primitives
-  // e.g., URLSearchParams.get() returns string|null, Headers.get() returns string|null
-  'get',
-  // e.g., URLSearchParams.has(), Map.has(), Set.has() return boolean
+  // Collection/Web API boolean checks — always return boolean regardless of receiver
+  // e.g., URLSearchParams.has(), Map.has(), Set.has(), WeakMap.has(), Reflect.has()
   'has',
 ]);
 
@@ -190,6 +188,14 @@ export function isStableFunctionCall(node: TSESTree.CallExpression): boolean {
     const methodName = callee.property.name;
 
     if (PRIMITIVE_RETURNING_METHODS.has(methodName)) {
+      return true;
+    }
+
+    // .get(key) with a single argument is a key-value lookup pattern that returns
+    // primitives or stored references: URLSearchParams.get('k') → string|null,
+    // Headers.get('k') → string|null, Map.get(k) → stored ref, FormData.get('k') → string|File|null.
+    // We require exactly 1 argument to avoid matching HTTP client patterns like axios.get(url, config).
+    if (methodName === 'get' && node.arguments.length === 1) {
       return true;
     }
 

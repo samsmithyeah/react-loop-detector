@@ -361,6 +361,57 @@ describe('Stable Reference False Positives', () => {
       // headers.get() returns string|null (primitive), compared by value
       expect(issues).toHaveLength(0);
     });
+
+    it('should NOT flag Map.get() with dynamic key as unstable (returns stored reference)', async () => {
+      const parsed = createTestFile(`
+        import React, { useEffect, useState } from 'react';
+
+        export function Component({ configMap, activeKey }: { configMap: Map<string, object>; activeKey: string }) {
+          const [label, setLabel] = useState('');
+          const config = configMap.get(activeKey);
+
+          useEffect(() => {
+            if (config) {
+              setLabel(String(config));
+            }
+          }, [config]);
+
+          return <div>{label}</div>;
+        }
+      `);
+
+      const results = await analyzeHooks([parsed]);
+      const issues = results.filter(
+        (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
+      );
+
+      // Map.get(key) returns a stored reference — stable as long as the Map is stable
+      expect(issues).toHaveLength(0);
+    });
+
+    it('should flag multi-argument .get() as potentially unstable (e.g., HTTP client pattern)', async () => {
+      const parsed = createTestFile(`
+        import React, { useEffect } from 'react';
+
+        export function Component({ apiClient }: { apiClient: any }) {
+          const response = apiClient.get('/users', { params: { page: 1 } });
+
+          useEffect(() => {
+            console.log(response);
+          }, [response]);
+
+          return <div />;
+        }
+      `);
+
+      const results = await analyzeHooks([parsed]);
+      const issues = results.filter(
+        (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
+      );
+
+      // Multi-arg .get() is not a key-value lookup — could return new objects
+      expect(issues.length).toBeGreaterThan(0);
+    });
   });
 
   describe('Zustand getState() pattern should be stable', () => {
