@@ -276,6 +276,144 @@ describe('Stable Reference False Positives', () => {
     });
   });
 
+  describe('URLSearchParams.get() and .has() should be stable', () => {
+    it('should NOT flag searchParams.get() as unstable (returns string|null primitive)', async () => {
+      const parsed = createTestFile(`
+        import React, { useEffect, useState } from 'react';
+
+        export function VerifyEmailPage({ searchParams }: { searchParams: URLSearchParams }) {
+          const [status, setStatus] = useState('loading');
+          const oobCode = searchParams.get('oobCode');
+
+          useEffect(() => {
+            if (!oobCode) {
+              setStatus('fallback');
+              return;
+            }
+            verifyEmail(oobCode).then(() => setStatus('success'));
+          }, [oobCode]);
+
+          return <div>{status}</div>;
+        }
+
+        async function verifyEmail(code: string) {}
+      `);
+
+      const results = await analyzeHooks([parsed]);
+      const issues = results.filter(
+        (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
+      );
+
+      // searchParams.get() returns string|null (primitive), compared by value
+      expect(issues).toHaveLength(0);
+    });
+
+    it('should NOT flag searchParams.has() as unstable (returns boolean primitive)', async () => {
+      const parsed = createTestFile(`
+        import React, { useEffect, useState } from 'react';
+
+        export function Component({ searchParams }: { searchParams: URLSearchParams }) {
+          const [message, setMessage] = useState('');
+          const hasToken = searchParams.has('token');
+
+          useEffect(() => {
+            if (hasToken) {
+              setMessage('Token found');
+            }
+          }, [hasToken]);
+
+          return <div>{message}</div>;
+        }
+      `);
+
+      const results = await analyzeHooks([parsed]);
+      const issues = results.filter(
+        (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
+      );
+
+      // searchParams.has() returns boolean (primitive), compared by value
+      expect(issues).toHaveLength(0);
+    });
+
+    it('should NOT flag headers.get() as unstable (returns string|null primitive)', async () => {
+      const parsed = createTestFile(`
+        import React, { useEffect, useState } from 'react';
+
+        export function Component({ headers }: { headers: Headers }) {
+          const [auth, setAuth] = useState('');
+          const contentType = headers.get('content-type');
+
+          useEffect(() => {
+            if (contentType) {
+              setAuth(contentType);
+            }
+          }, [contentType]);
+
+          return <div>{auth}</div>;
+        }
+      `);
+
+      const results = await analyzeHooks([parsed]);
+      const issues = results.filter(
+        (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
+      );
+
+      // headers.get() returns string|null (primitive), compared by value
+      expect(issues).toHaveLength(0);
+    });
+
+    it('should NOT flag Map.get() with dynamic key as unstable (returns stored reference)', async () => {
+      const parsed = createTestFile(`
+        import React, { useEffect, useState } from 'react';
+
+        export function Component({ configMap, activeKey }: { configMap: Map<string, object>; activeKey: string }) {
+          const [label, setLabel] = useState('');
+          const config = configMap.get(activeKey);
+
+          useEffect(() => {
+            if (config) {
+              setLabel(String(config));
+            }
+          }, [config]);
+
+          return <div>{label}</div>;
+        }
+      `);
+
+      const results = await analyzeHooks([parsed]);
+      const issues = results.filter(
+        (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
+      );
+
+      // Map.get(key) returns a stored reference — stable as long as the Map is stable
+      expect(issues).toHaveLength(0);
+    });
+
+    it('should flag multi-argument .get() as potentially unstable (e.g., HTTP client pattern)', async () => {
+      const parsed = createTestFile(`
+        import React, { useEffect } from 'react';
+
+        export function Component({ apiClient }: { apiClient: any }) {
+          const response = apiClient.get('/users', { params: { page: 1 } });
+
+          useEffect(() => {
+            console.log(response);
+          }, [response]);
+
+          return <div />;
+        }
+      `);
+
+      const results = await analyzeHooks([parsed]);
+      const issues = results.filter(
+        (r) => r.type === 'confirmed-infinite-loop' || r.type === 'potential-issue'
+      );
+
+      // Multi-arg .get() is not a key-value lookup — could return new objects
+      expect(issues.length).toBeGreaterThan(0);
+    });
+  });
+
   describe('Zustand getState() pattern should be stable', () => {
     it('should NOT flag actions from useStore.getState() as unstable', async () => {
       // From index.tsx - setStories comes from useLibraryStore.getState()

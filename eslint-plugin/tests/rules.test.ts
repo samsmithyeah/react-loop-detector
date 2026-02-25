@@ -280,6 +280,34 @@ describe('no-unstable-variable-deps', () => {
           }, [config]);
         }
       `,
+      // searchParams.get() returns string|null (primitive) - should not be flagged
+      `
+        function Component({ searchParams }) {
+          const oobCode = searchParams.get('oobCode');
+          useEffect(() => {
+            if (!oobCode) return;
+            console.log(oobCode);
+          }, [oobCode]);
+        }
+      `,
+      // searchParams.has() returns boolean (primitive) - should not be flagged
+      `
+        function Component({ searchParams }) {
+          const hasCode = searchParams.has('oobCode');
+          useEffect(() => {
+            console.log(hasCode);
+          }, [hasCode]);
+        }
+      `,
+      // Map.get() with dynamic key returns stored reference - should not be flagged
+      `
+        function Component({ configMap, activeKey }) {
+          const config = configMap.get(activeKey);
+          useEffect(() => {
+            console.log(config);
+          }, [config]);
+        }
+      `,
       // useImperativeHandle with memoized value in deps (3rd arg)
       `
         function Component(props, ref) {
@@ -387,6 +415,18 @@ describe('no-unstable-variable-deps', () => {
           }
         `,
         errors: [{ messageId: 'unstableObjectVariable' }],
+      },
+      // Multi-arg .get() is not a key-value lookup — should be flagged
+      {
+        code: `
+          function Component({ apiClient }) {
+            const response = apiClient.get('/users', { params: { page: 1 } });
+            useEffect(() => {
+              console.log(response);
+            }, [response]);
+          }
+        `,
+        errors: [{ messageId: 'unstableFunctionCallVariable' }],
       },
     ],
   });

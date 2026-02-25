@@ -90,6 +90,9 @@ const PRIMITIVE_RETURNING_METHODS = new Set([
   'endsWith',
   'every',
   'some',
+  // Collection/Web API boolean checks — always return boolean regardless of receiver
+  // e.g., URLSearchParams.has(), Map.has(), Set.has(), WeakMap.has(), Reflect.has()
+  'has',
   // Reduce can return primitives (commonly does)
   // Note: We'll be conservative here - reduce CAN return objects
 ]);
@@ -402,6 +405,14 @@ export function isStableFunctionCall(
 
     // Methods that return primitives (strings, numbers, booleans)
     if (PRIMITIVE_RETURNING_METHODS.has(methodName)) {
+      return true;
+    }
+
+    // .get(key) with a single argument is a key-value lookup pattern that returns
+    // primitives or stored references: URLSearchParams.get('k') → string|null,
+    // Headers.get('k') → string|null, Map.get(k) → stored ref, FormData.get('k') → string|File|null.
+    // We require exactly 1 argument to avoid matching HTTP client patterns like axios.get(url, config).
+    if (methodName === 'get' && init.arguments.length === 1) {
       return true;
     }
 
