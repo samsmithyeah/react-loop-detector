@@ -475,6 +475,13 @@ export function analyzeStateInteractions(
   // Track cleanup function nodes (functions returned from the effect callback)
   const cleanupFunctionNodes = new Set<t.Node>();
 
+  // Track named function identifiers passed to async callbacks (e.g., addEventListener('click', handleClick))
+  // These need to be resolved to their function bodies after the first pass.
+  const namedAsyncCallbackRefs = new Set<string>();
+
+  // Track locally defined functions: name → function expression node
+  const localFunctions = new Map<string, t.Node>();
+
   // First pass: find all functions passed as arguments to known safe receivers,
   // track async callback nodes, and identify cleanup functions (returned from effect)
   traverse(hookBody, {
@@ -485,6 +492,26 @@ export function analyzeStateInteractions(
       const returnArg = path.node.argument;
       if (t.isArrowFunctionExpression(returnArg) || t.isFunctionExpression(returnArg)) {
         cleanupFunctionNodes.add(returnArg);
+      }
+    },
+
+    // Collect locally defined function variables:
+    // const handleClick = () => { ... } or const handleClick = function() { ... }
+    VariableDeclarator(path: NodePath<t.VariableDeclarator>) {
+      const node = path.node;
+      if (
+        t.isIdentifier(node.id) &&
+        (t.isArrowFunctionExpression(node.init) || t.isFunctionExpression(node.init))
+      ) {
+        localFunctions.set(node.id.name, node.init);
+      }
+    },
+
+    // Collect function declarations: function handleClick() { ... }
+    FunctionDeclaration(path: NodePath<t.FunctionDeclaration>) {
+      const node = path.node;
+      if (node.id && t.isIdentifier(node.id)) {
+        localFunctions.set(node.id.name, node);
       }
     },
 
@@ -532,10 +559,25 @@ export function analyzeStateInteractions(
           if (t.isArrowFunctionExpression(arg) || t.isFunctionExpression(arg)) {
             asyncCallbackNodes.add(arg);
           }
+          // Track named function references for resolution after this pass
+          // e.g., addEventListener('mousedown', handleClickOutside)
+          else if (t.isIdentifier(arg)) {
+            namedAsyncCallbackRefs.add(arg.name);
+          }
         }
       }
     },
   });
+
+  // Resolve named function references passed to async callbacks.
+  // e.g., const handleClick = () => { setState(...) }; addEventListener('click', handleClick);
+  // → mark handleClick's function body as an async callback node
+  for (const name of namedAsyncCallbackRefs) {
+    const funcNode = localFunctions.get(name);
+    if (funcNode) {
+      asyncCallbackNodes.add(funcNode);
+    }
+  }
 
   // Helper: check if a path is inside an async callback
   function isInsideAsyncCallback(path: NodePath): boolean {
