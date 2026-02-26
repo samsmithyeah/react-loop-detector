@@ -175,8 +175,20 @@ export function analyzeCondition(
   // Pattern 3: Logical AND with state check - `if (someCondition && !stateVar)`
   if (condition.type === 'LogicalExpression' && condition.operator === '&&') {
     // Recursively check both sides
-    const leftResult = analyzeCondition(condition.left, stateVar, setterCall, _ifStatement, setterName);
-    const rightResult = analyzeCondition(condition.right, stateVar, setterCall, _ifStatement, setterName);
+    const leftResult = analyzeCondition(
+      condition.left,
+      stateVar,
+      setterCall,
+      _ifStatement,
+      setterName
+    );
+    const rightResult = analyzeCondition(
+      condition.right,
+      stateVar,
+      setterCall,
+      _ifStatement,
+      setterName
+    );
 
     if (leftResult?.isSafe) return leftResult;
     if (rightResult?.isSafe) return rightResult;
