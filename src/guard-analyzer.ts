@@ -37,7 +37,7 @@ export function analyzeConditionalGuard(
     // Check for IfStatement
     if (ancestor.type === 'IfStatement') {
       const condition = ancestor.test;
-      const guardType = analyzeCondition(condition, stateVar, setterCall, ancestor);
+      const guardType = analyzeCondition(condition, stateVar, setterCall, ancestor, setterName);
 
       if (guardType) {
         return {
@@ -74,7 +74,8 @@ export function analyzeCondition(
   condition: t.Node | null | undefined,
   stateVar: string,
   setterCall: t.CallExpression,
-  _ifStatement: t.IfStatement
+  _ifStatement: t.IfStatement,
+  setterName?: string
 ): { type: GuardedModification['guardType']; isSafe: boolean; warning?: string } | null {
   if (!condition) return null;
 
@@ -91,6 +92,18 @@ export function analyzeCondition(
         }
         // `if (!value) setValue(something)` where something is truthy - likely safe
         if (setterArg.type !== 'Identifier' || setterArg.name !== stateVar) {
+          return { type: 'toggle-guard', isSafe: true };
+        }
+      } else if (setterCall.callee?.type === 'Identifier') {
+        // No setter arguments — this is an indirect function call pattern:
+        // if (!token) { fetchAndSetToken(); }
+        // The called function will internally call the actual setter with a value.
+        // The !stateVar guard ensures it only runs when the state is falsy,
+        // and the function is expected to set it to something truthy, breaking the loop.
+        // We check that the callee is NOT the setter itself (e.g., setState() with no args
+        // would set to undefined, which is falsy and would loop).
+        const calleeName = setterCall.callee.name;
+        if (calleeName !== setterName) {
           return { type: 'toggle-guard', isSafe: true };
         }
       }
@@ -162,8 +175,20 @@ export function analyzeCondition(
   // Pattern 3: Logical AND with state check - `if (someCondition && !stateVar)`
   if (condition.type === 'LogicalExpression' && condition.operator === '&&') {
     // Recursively check both sides
-    const leftResult = analyzeCondition(condition.left, stateVar, setterCall, _ifStatement);
-    const rightResult = analyzeCondition(condition.right, stateVar, setterCall, _ifStatement);
+    const leftResult = analyzeCondition(
+      condition.left,
+      stateVar,
+      setterCall,
+      _ifStatement,
+      setterName
+    );
+    const rightResult = analyzeCondition(
+      condition.right,
+      stateVar,
+      setterCall,
+      _ifStatement,
+      setterName
+    );
 
     if (leftResult?.isSafe) return leftResult;
     if (rightResult?.isSafe) return rightResult;
