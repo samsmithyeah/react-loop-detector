@@ -685,10 +685,28 @@ export function analyzeStateInteractions(
             interactions.cleanupModifications.push(setter);
           }
         } else {
-          // Indirect calls in main effect body - treat as unconditional modifications
-          // since we can't easily analyze guards through function calls
+          // Indirect calls in main effect body — check if the function call itself
+          // is guarded by a condition on the state variable.
+          // e.g., if (!token) { setNewToken(); } where setNewToken calls setToken
+          // The guard on the function call effectively guards the transitive setState.
           for (const setter of transitiveSetters) {
-            interactions.modifications.push(setter);
+            const stateVar = setterToState.get(setter);
+            const guardAnalysis = analyzeConditionalGuard(
+              node,
+              getAncestorStack(path),
+              setter,
+              stateVar,
+              stateNames
+            );
+
+            if (guardAnalysis) {
+              interactions.guardedModifications.push(guardAnalysis);
+              if (!guardAnalysis.isSafe) {
+                interactions.conditionalModifications.push(setter);
+              }
+            } else {
+              interactions.modifications.push(setter);
+            }
           }
         }
       }
